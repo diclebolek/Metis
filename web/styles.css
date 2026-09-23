@@ -305,13 +305,22 @@ button.active-tab { background: #17324d; color: var(--text); border-color: #2a56
   max-width: min(280px, 42%); overflow: hidden;
 }
 .header-search {
-  display: flex; align-items: center; gap: .3rem; min-width: 0;
+  position: relative; display: flex; align-items: center; flex-shrink: 0;
 }
-.header-search .msg-search {
-  width: min(180px, 28vw); font-size: .8rem; padding: .35rem .55rem;
+.header-search .search-pop {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 40;
+  width: min(240px, 70vw);
+  padding: .45rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  background: linear-gradient(180deg, #152033, #0e1624);
+  box-shadow: 0 12px 32px rgba(0,0,0,.4);
   animation: bubbleIn .18s ease both;
 }
-.header-search .msg-search.hidden { display: none; }
+.header-search .search-pop.hidden { display: none; }
+.header-search .msg-search {
+  width: 100%; font-size: .8rem; padding: .4rem .55rem; margin: 0;
+}
 .search-toggle.open {
   border-color: var(--accent); color: var(--accent);
 }
@@ -729,3 +738,41 @@ body.theme-light {
     transition-duration: .01ms !important;
   }
 }
+
+/* Light theme surfaces — hardcoded dark fills override */
+body.theme-light {
+  --surface: #ffffff;
+  --surface-2: #eef2f8;
+  --input-bg: #ffffff;
+}
+body.theme-light .nav-section,
+body.theme-light .msg,
+body.theme-light .tool-btn,
+body.theme-light .composer .tool,
+body.theme-light .tools-toggle,
+body.theme-light .settings-row,
+body.theme-light .react-chip,
+body.theme-light .pill,
+body.theme-light .create-panel,
+body.theme-light .profile-card,
+body.theme-light .popover,
+body.theme-light .tools-bubble,
+body.theme-light .search-pop,
+body.theme-light .auth-card {
+  background: var(--surface);
+  color: var(--text);
+}
+body.theme-light .msg.me { background: #d6e8fb; border-color: #9bbfe3; }
+body.theme-light .sidebar { background: var(--panel-2); }
+body.theme-light input,
+body.theme-light select,
+body.theme-light .composer .text,
+body.theme-light .people-search,
+body.theme-light .msg-search {
+  background: var(--input-bg) !important;
+  color: var(--text) !important;
+  border-color: var(--line) !important;
+}
+body.theme-light .tab-btn { background: var(--surface-2); color: var(--muted); }
+body.theme-light .tab-btn.active { background: color-mix(in srgb, var(--accent) 14%, #fff); color: var(--text); }
+body.theme-light .shell { box-shadow: 0 24px 70px rgba(30,50,80,.18); }

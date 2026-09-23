@@ -122,6 +122,8 @@
     document.body.classList.toggle("theme-dark", theme !== "light");
     const btn = $("themeToggle");
     if (btn) btn.textContent = theme === "light" ? "Tema: açık" : "Tema: koyu";
+    const sel = $("settingsTheme");
+    if (sel && sel.value !== theme) sel.value = theme === "light" ? "light" : "dark";
   }
 
   class ChatPanel {
@@ -140,6 +142,7 @@
         file: root.querySelector(".file-input"),
         search: root.querySelector(".msg-search"),
         searchToggle: root.querySelector(".search-toggle"),
+        searchPop: root.querySelector(".search-pop"),
         mute: root.querySelector(".mute-btn"),
         close: root.querySelector(".close-side"),
         replyBar: root.querySelector(".reply-bar"),
@@ -177,28 +180,19 @@
         this.els.text.value = "";
       };
       this.els.text.addEventListener("input", () => this.sendTyping());
+      this.els.text.addEventListener("focus", () => this.closeSearch());
       this.els.search.addEventListener("input", () => this.renderFiltered());
       this.els.searchToggle.onclick = (e) => {
+        e.preventDefault();
         e.stopPropagation();
-        const open = this.els.search.classList.toggle("hidden") === false;
-        this.els.searchToggle.classList.toggle("open", open);
-        this.els.searchToggle.setAttribute("aria-expanded", open ? "true" : "false");
-        if (open) {
-          this.els.search.focus();
-        } else {
-          this.els.search.value = "";
-          this.renderFiltered();
-        }
+        const willOpen = this.els.searchPop.classList.contains("hidden");
+        if (willOpen) this.openSearch();
+        else this.closeSearch();
       };
       this.els.search.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") {
-          this.els.search.classList.add("hidden");
-          this.els.search.value = "";
-          this.els.searchToggle.classList.remove("open");
-          this.els.searchToggle.setAttribute("aria-expanded", "false");
-          this.renderFiltered();
-        }
+        if (e.key === "Escape") this.closeSearch();
       });
+      this.els.searchPop?.addEventListener("click", (e) => e.stopPropagation());
       this.els.mute.onclick = () => {
         soundOn = !soundOn;
         this.els.mute.textContent = soundOn ? "🔔" : "🔕";
@@ -263,6 +257,25 @@
       if (bubble && wrap && bubble.parentElement !== wrap) {
         wrap.appendChild(bubble);
       }
+    }
+
+    openSearch() {
+      this.closeToolsBubble();
+      this.els.searchPop?.classList.remove("hidden");
+      this.els.searchToggle?.classList.add("open");
+      this.els.searchToggle?.setAttribute("aria-expanded", "true");
+      requestAnimationFrame(() => this.els.search?.focus());
+    }
+
+    closeSearch() {
+      if (!this.els.searchPop) return;
+      const wasOpen = !this.els.searchPop.classList.contains("hidden");
+      const hadQuery = !!(this.els.search?.value || "").trim();
+      this.els.searchPop.classList.add("hidden");
+      this.els.searchToggle?.classList.remove("open");
+      this.els.searchToggle?.setAttribute("aria-expanded", "false");
+      if (this.els.search) this.els.search.value = "";
+      if (wasOpen || hadQuery) this.renderFiltered();
     }
 
     placeToolsBubble() {
@@ -1312,6 +1325,10 @@
       mainPanel?.closeToolsBubble?.();
       sidePanel?.closeToolsBubble?.();
     }
+    if (!e.target.closest(".header-search")) {
+      mainPanel?.closeSearch?.();
+      sidePanel?.closeSearch?.();
+    }
   });
 
   function showApp() {
@@ -1370,21 +1387,26 @@
       openProfile(me, { settings: true });
     }
   });
-  $("settingsTheme")?.addEventListener("change", (e) => {
-    theme = e.target.value === "light" ? "light" : "dark";
-    localStorage.setItem("metis_theme", theme);
-    applyTheme();
-  });
-  $("settingsFocus")?.addEventListener("change", (e) => {
-    const v = e.target.value;
-    if ($("myFocus")) $("myFocus").value = v;
-    postFocus(v, mainPanel?.room || "");
-  });
-  $("settingsSound")?.addEventListener("change", (e) => {
-    soundOn = !!e.target.checked;
-    document.querySelectorAll(".mute-btn").forEach((b) => {
-      b.textContent = soundOn ? "🔔" : "🔕";
-    });
+  $("profileModal")?.addEventListener("change", (e) => {
+    const t = e.target;
+    if (!(t instanceof HTMLElement)) return;
+    if (t.id === "settingsTheme") {
+      theme = t.value === "light" ? "light" : "dark";
+      localStorage.setItem("metis_theme", theme);
+      applyTheme();
+      toast(theme === "light" ? "Açık tema" : "Koyu tema");
+    }
+    if (t.id === "settingsFocus") {
+      if ($("myFocus")) $("myFocus").value = t.value;
+      postFocus(t.value, mainPanel?.room || "");
+      toast("Odak: " + (FOCUS_LABEL[t.value] || t.value));
+    }
+    if (t.id === "settingsSound") {
+      soundOn = !!t.checked;
+      document.querySelectorAll(".mute-btn").forEach((b) => {
+        b.textContent = soundOn ? "🔔" : "🔕";
+      });
+    }
   });
   $("settingsNotify")?.addEventListener("click", async () => {
     if (!("Notification" in window)) { toast("Bu tarayıcı bildirim desteklemiyor"); return; }
