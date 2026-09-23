@@ -596,8 +596,6 @@
       } else if (m.type === "unsent") {
         el.textContent = "Mesaj geri alındı";
       } else {
-        const meta = document.createElement("div");
-        meta.className = "meta";
         const who = document.createElement("button");
         who.type = "button";
         who.className = "msg-user";
@@ -607,11 +605,14 @@
           e.stopPropagation();
           openProfile(m.user, { room: this.room, history: this.history });
         };
+        block.appendChild(who);
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
         const time = document.createElement("span");
-        time.textContent = " · " + new Date(m.ts).toLocaleTimeString();
-        const left = document.createElement("span");
-        left.append(who, time);
-        meta.appendChild(left);
+        time.className = "msg-time";
+        time.textContent = new Date(m.ts).toLocaleTimeString();
+        meta.appendChild(time);
         if (m.ephemeral) {
           const ep = document.createElement("span");
           ep.className = "ephemeral-tag";
@@ -964,11 +965,7 @@
   }
 
   function quoteIntoSideOrSelf(m, fromPanel) {
-    // Soldaki odadan tıklanınca sağ panel açıksa alıntı sağa gider; paneller kapanmaz.
-    if (!fromPanel.closable && sidePanel) {
-      sidePanel.setReply(m);
-      return;
-    }
+    // Yanıt, mesajın bulunduğu paneli / sekmeyi kullanır.
     fromPanel.setReply(m);
   }
 
