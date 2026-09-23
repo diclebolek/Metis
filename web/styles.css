@@ -787,8 +787,8 @@ body.theme-light .auth-card {
   color: var(--text);
 }
 body.theme-light .msg {
-  background: #c8daf0 !important;
-  border-color: #a8bdd8 !important;
+  background: #dde6f2 !important;
+  border-color: #c0cddd !important;
   color: var(--text) !important;
   border-radius: 22px !important;
 }
