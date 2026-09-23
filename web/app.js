@@ -118,12 +118,25 @@
   }
 
   function applyTheme() {
-    document.body.classList.toggle("theme-light", theme === "light");
-    document.body.classList.toggle("theme-dark", theme !== "light");
+    document.body.classList.remove("theme-light", "theme-dark");
+    document.body.classList.add(theme === "light" ? "theme-light" : "theme-dark");
+    document.documentElement.style.colorScheme = theme === "light" ? "light" : "dark";
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", theme === "light" ? "#e8eef5" : "#0f1419");
     const btn = $("themeToggle");
     if (btn) btn.textContent = theme === "light" ? "Tema: açık" : "Tema: koyu";
-    const sel = $("settingsTheme");
-    if (sel && sel.value !== theme) sel.value = theme === "light" ? "light" : "dark";
+    document.querySelectorAll(".theme-opt").forEach((b) => {
+      b.classList.toggle("active", b.getAttribute("data-theme") === theme);
+    });
+  }
+
+  function setTheme(next) {
+    const v = next === "light" ? "light" : "dark";
+    if (theme === v) return;
+    theme = v;
+    localStorage.setItem("metis_theme", theme);
+    applyTheme();
+    toast(theme === "light" ? "Açık tema açıldı" : "Koyu tema açıldı");
   }
 
   class ChatPanel {
@@ -1106,12 +1119,13 @@
   }
 
   function fillSelfSettings() {
-    const themeSel = $("settingsTheme");
     const focusSel = $("settingsFocus");
     const soundCb = $("settingsSound");
-    if (themeSel) themeSel.value = theme === "light" ? "light" : "dark";
     if (focusSel) focusSel.value = $("myFocus")?.value || "here";
     if (soundCb) soundCb.checked = soundOn;
+    document.querySelectorAll(".theme-opt").forEach((b) => {
+      b.classList.toggle("active", b.getAttribute("data-theme") === theme);
+    });
   }
 
   async function freshHistory(room) {
@@ -1387,15 +1401,17 @@
       openProfile(me, { settings: true });
     }
   });
+  $("profileModal")?.addEventListener("click", (e) => {
+    const opt = e.target.closest?.(".theme-opt");
+    if (opt) {
+      e.preventDefault();
+      e.stopPropagation();
+      setTheme(opt.getAttribute("data-theme"));
+    }
+  });
   $("profileModal")?.addEventListener("change", (e) => {
     const t = e.target;
     if (!(t instanceof HTMLElement)) return;
-    if (t.id === "settingsTheme") {
-      theme = t.value === "light" ? "light" : "dark";
-      localStorage.setItem("metis_theme", theme);
-      applyTheme();
-      toast(theme === "light" ? "Açık tema" : "Koyu tema");
-    }
     if (t.id === "settingsFocus") {
       if ($("myFocus")) $("myFocus").value = t.value;
       postFocus(t.value, mainPanel?.room || "");
@@ -1456,9 +1472,7 @@
   };
 
   $("themeToggle")?.addEventListener("click", () => {
-    theme = theme === "light" ? "dark" : "light";
-    localStorage.setItem("metis_theme", theme);
-    applyTheme();
+    setTheme(theme === "light" ? "dark" : "light");
   });
   $("myFocus")?.addEventListener("change", (e) => {
     postFocus(e.target.value, mainPanel?.room || "");

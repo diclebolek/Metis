@@ -158,13 +158,13 @@
       </div>
       <div class="profile-tab-panel hidden" id="tabSettings">
         <div class="settings-list">
-          <label class="settings-row">
+          <div class="settings-row">
             <span>Tema</span>
-            <select id="settingsTheme">
-              <option value="dark">Koyu</option>
-              <option value="light">Açık</option>
-            </select>
-          </label>
+            <div class="theme-switch" role="group" aria-label="Tema">
+              <button type="button" class="theme-opt" data-theme="dark" id="themeOptDark">Koyu</button>
+              <button type="button" class="theme-opt" data-theme="light" id="themeOptLight">Açık</button>
+            </div>
+          </div>
           <label class="settings-row">
             <span>Odak durumu</span>
             <select id="settingsFocus">
