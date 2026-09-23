@@ -1,86 +1,94 @@
-# denek
+# Metis
 
-Real-time chat platform built with a **Go** WebSocket gateway, a **Rust** message worker, and **Redis** for Streams, Pub/Sub, presence, and rate limiting.
+Gerçek zamanlı sohbet — **Go** WebSocket gateway, **Rust** mesaj işçisi, **Redis** (Streams · Pub/Sub · oturum · varlık · hız sınırı).
 
-## Architecture
+Ayrı bir SQL veritabanı yok: Redis bu projenin kaynak gerçeğidir. Kalıcı arşiv sohbetlerinden farklı olarak **süreli odalar** Redis TTL ile silinir.
 
 ```
-Client (browser)
-   │  REST + WebSocket
-   ▼
+Tarayıcı
+  │  REST + WebSocket
+  ▼
 Go Gateway ──XADD──► Redis Stream (messages:inbound)
-   ▲                         │
-   │                         ▼
-   └──── Pub/Sub ◄──── Rust Worker
-        chat:room:*      rate limit · history · fan-out
+  │  oturum · varlık · yükleme · engel/sessize
+  ▲                         │
+  │                         ▼
+  └──── Pub/Sub ◄──── Rust Worker
+       chat:room:*      hız sınırı · geçmiş · dağıtım
 ```
 
-| Component | Responsibility |
-|-----------|----------------|
-| `gateway/` | HTTP API, WebSocket hub, presence, typing relay |
-| `worker/` | Consume inbound stream, enforce rate limits, publish + store history |
-| `web/` | Lightweight chat UI |
-| Redis | Queue, Pub/Sub, presence sets, message history |
+## Bileşenler
 
-## Features
+| Yol | Görev |
+|-----|--------|
+| `gateway/` | Auth, REST, WebSocket hub, yüklemeler, varlık, profil, özellik API’leri |
+| `worker/` | Inbound stream tüketimi, hız sınırı, geçmiş + oda Pub/Sub |
+| `web/` | Metis arayüzü (PWA, split panel, araç balonu, ayarlar) |
+| `uploads/` | Yerel dosya/görseller (gateway sunar) |
+| `docker-compose.yml` | Redis |
 
-- Room-based real-time messaging
-- Online presence per room
-- Typing indicators
-- Per-user rate limiting
-- Message history (last 100 messages / room)
-- Default rooms: `general`, `random`, `dev`
+## Özellikler
 
-## Requirements
+### Ayırt edici
+- **Süreli odalar** — 2 saat / gece yarısı / 24 saat; TTL bitince oda + geçmiş silinir (toplantı / etkinlik türleri)
+- **Kaybolan mesaj** — okununca veya 24 saat sonra (oda TTL’sinden bağımsız)
+- **Alıntı → sağ panel** — soldaki mesaja tıklayınca sağdaki DM açık kalır, alıntı oraya gider
+- **Odak durumu** — bu odada / yazıyor / meşgul; kişi listesinde oda görünür
+- **Hız sınırı geri bildirimi** — sessiz düşme yok; “X saniye sonra gönderilebilir”
 
-- Go 1.22+
-- Rust (stable toolchain + cargo)
-- Docker (for Redis)
+### Sohbet
+- Odalar + DM, **split pane**
+- Emoji, sticker, GIF, çoklu fotoğraf / albüm
+- Yanıt (quote), pin, tepki, düzenle / sil
+- Okunmamış sayacı, global arama
+- Davet linki, WebRTC sinyal (çağrı daveti)
+- Tema (açık/koyu), PWA + service worker
+- Kendi profilinden **ayarlar** (tema, odak, ses, bildirim, çıkış)
 
-## Quick start
+## Hızlı başlangıç
+
+Gereksinimler: Docker (Redis), Go 1.21+, Rust (stable), modern tarayıcı.
 
 ```bash
-# 1. Start Redis
+# 1) Redis
 docker compose up -d
 
-# 2. Start the Rust worker
-cd worker && cargo run --release
+# 2) Worker (ayrı terminal)
+cd worker
+cargo run --release
 
-# 3. Start the Go gateway (separate terminal)
-cd gateway && go run .
+# 3) Gateway (ayrı terminal)
+cd gateway
+go run .
 
-# 4. Open the UI
-# http://localhost:8080
+# → http://localhost:8080
 ```
 
-## API
+Demo: `alice` / `demo123` (bob, carol, … ~60 örnek kullanıcı).
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/health` | Health check |
-| GET | `/api/rooms` | List rooms + online counts |
-| POST | `/api/rooms` | Create room `{"name":"general"}` |
-| GET | `/api/rooms/{name}/messages` | Recent messages |
-| GET | `/api/rooms/{name}/presence` | Online users |
-| WS | `/ws?user=alice&room=general` | Chat socket |
+Ortam değişkenleri için `.env.example` dosyasına bakın (`REDIS_ADDR`, `HTTP_ADDR`, `RATE_LIMIT`, `UPLOAD_DIR`).
 
-### WebSocket client payload
+## API özeti
 
-```json
-{"type":"chat","content":"hello"}
-{"type":"typing"}
-```
+| Yöntem | Yol | Açıklama |
+|--------|-----|----------|
+| POST | `/api/auth/register` · `/api/auth/login` | Kayıt / giriş |
+| GET | `/api/me` · `/api/users` | Oturum · kullanıcı listesi (+ odak) |
+| GET/POST | `/api/rooms` | Oda listesi / oluştur (`ttl`, `kind`) |
+| GET | `/api/rooms/{room}/messages` | Geçmiş |
+| POST | `/api/dm` | DM aç |
+| POST | `/api/upload` | Dosya (çoklu albüm istemci tarafında) |
+| POST | `/api/focus` | Odak durumu |
+| GET | `/api/search?q=` | Global arama |
+| POST/GET | `/api/invite` | Davet kodu |
+| WS | `/ws?token=&room=` | Canlı oda |
 
-## Configuration
+## Geliştirme notları
 
-| Variable | Default | Used by |
-|----------|---------|---------|
-| `REDIS_ADDR` | `127.0.0.1:6379` | gateway, worker |
-| `HTTP_ADDR` | `:8080` | gateway |
-| `RATE_LIMIT` | `10` (messages/sec) | worker |
+- Worker **yalnızca std**: MinGW bağlayıcı bağımlılığı yok.
+- Hız sınırı varsayılanı `RATE_LIMIT` (ör. 10/sn); aşımda `type: rate_limit` + `retry_after`.
+- Süreli oda meta: `roommeta:{name}`; süpürücü Redis anahtarlarını temizler.
+- Üretimde: TLS, güçlü şifreler, Redis auth, upload boyutu/CORS gözden geçirin.
 
-Copy `.env.example` if you want a local reference file.
-
-## License
+## Lisans
 
 MIT

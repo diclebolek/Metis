@@ -1,454 +1,260 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>denek</title>
-  <style>
-    :root {
-      --bg: #0b1220;
-      --panel: #121a2b;
-      --panel-2: #0e1624;
-      --line: #243247;
-      --text: #e8eef7;
-      --muted: #8494ab;
-      --accent: #4aa3f0;
-      --accent-2: #1f6fad;
-      --sys: #7d8fa5;
-      --ok: #3ecf8e;
-      --danger: #e35d6a;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: "Segoe UI", system-ui, sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(900px 500px at 0% 0%, #17345a 0%, transparent 55%),
-        radial-gradient(700px 400px at 100% 100%, #123528 0%, transparent 50%),
-        var(--bg);
-      display: grid;
-      place-items: center;
-      padding: 1rem;
-    }
-    .shell {
-      width: min(980px, 100%);
-      height: min(720px, 92vh);
-      display: grid;
-      grid-template-columns: 220px 1fr;
-      background: color-mix(in srgb, var(--panel) 94%, transparent);
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 24px 70px rgba(0,0,0,.4);
-    }
-    @media (max-width: 760px) {
-      .shell { grid-template-columns: 1fr; height: auto; min-height: 85vh; }
-      .sidebar { display: none; }
-      .sidebar.open { display: flex; }
-    }
-    .sidebar {
-      background: var(--panel-2);
-      border-right: 1px solid var(--line);
-      display: flex;
-      flex-direction: column;
-      padding: .9rem;
-      gap: .85rem;
-    }
-    .brand {
-      font-weight: 700;
-      letter-spacing: .04em;
-      font-size: 1rem;
-    }
-    .brand span { color: var(--accent); }
-    .side-block h3 {
-      margin: 0 0 .45rem;
-      font-size: .72rem;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      color: var(--muted);
-      font-weight: 600;
-    }
-    .list { display: flex; flex-direction: column; gap: .3rem; }
-    .list button, .chip {
-      text-align: left;
-      width: 100%;
-      border: 1px solid transparent;
-      background: transparent;
-      color: var(--text);
-      padding: .45rem .55rem;
-      border-radius: 8px;
-      cursor: pointer;
-      font: inherit;
-    }
-    .list button:hover { background: #182338; }
-    .list button.active {
-      background: #17324d;
-      border-color: #2a567a;
-    }
-    .chip {
-      cursor: default;
-      color: var(--muted);
-      font-size: .88rem;
-    }
-    .chip::before {
-      content: "";
-      display: inline-block;
-      width: .45rem;
-      height: .45rem;
-      margin-right: .4rem;
-      border-radius: 50%;
-      background: var(--ok);
-    }
-    .main { display: flex; flex-direction: column; min-width: 0; }
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: .75rem;
-      padding: .85rem 1rem;
-      border-bottom: 1px solid var(--line);
-    }
-    #status {
-      font-size: .8rem;
-      color: var(--muted);
-      display: flex;
-      align-items: center;
-      gap: .4rem;
-    }
-    #status::before {
-      content: "";
-      width: .5rem;
-      height: .5rem;
-      border-radius: 50%;
-      background: var(--danger);
-    }
-    #status.on::before { background: var(--ok); }
-    .join, .chat {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
-    .join { display: grid; place-items: center; padding: 1.5rem; }
-    .join-card {
-      width: min(380px, 100%);
-      display: grid;
-      gap: .65rem;
-    }
-    .join-card p { margin: 0 0 .3rem; color: var(--muted); font-size: .9rem; }
-    input, button.primary, button.ghost {
-      font: inherit;
-      border-radius: 10px;
-      border: 1px solid var(--line);
-      padding: .65rem .8rem;
-      background: #0f1724;
-      color: var(--text);
-    }
-    input:focus { outline: 2px solid #245988; border-color: var(--accent); }
-    button.primary {
-      background: linear-gradient(180deg, var(--accent), var(--accent-2));
-      border: none;
-      color: #fff;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    button.ghost {
-      background: transparent;
-      color: var(--muted);
-      cursor: pointer;
-    }
-    #messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      gap: .55rem;
-    }
-    .msg {
-      max-width: 78%;
-      padding: .55rem .75rem;
-      border-radius: 12px;
-      background: #101927;
-      border: 1px solid var(--line);
-      align-self: flex-start;
-      word-break: break-word;
-    }
-    .msg.me {
-      align-self: flex-end;
-      background: #15324d;
-      border-color: #2a567a;
-    }
-    .msg.system {
-      align-self: center;
-      background: transparent;
-      border: none;
-      color: var(--sys);
-      font-size: .84rem;
-      padding: .15rem;
-    }
-    .msg .meta {
-      font-size: .7rem;
-      color: var(--muted);
-      margin-bottom: .18rem;
-    }
-    .composer {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: .5rem;
-      padding: .85rem 1rem;
-      border-top: 1px solid var(--line);
-    }
-    #typing {
-      min-height: 1.1rem;
-      padding: 0 1rem;
-      font-size: .78rem;
-      color: var(--muted);
-    }
-    .hidden { display: none !important; }
-    .new-room {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: .35rem;
-    }
-  </style>
+  <title>Metis</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0f1419" />
 </head>
-<body>
+<body class="theme-dark">
   <div class="shell">
-    <aside class="sidebar" id="sidebar">
-      <div class="brand">denek <span>chat</span></div>
-      <div class="side-block">
-        <h3>Rooms</h3>
-        <div class="list" id="rooms"></div>
-        <div class="new-room" style="margin-top:.5rem">
-          <input id="newRoom" placeholder="new room" maxlength="32" />
-          <button class="ghost" id="addRoom" type="button">+</button>
+    <aside class="sidebar">
+      <div class="side-top">
+        <div class="brand">Metis</div>
+        <div class="user-card" id="meCard" title="Profil ve ayarlar" role="button" tabindex="0">
+          <div class="avatar" id="avatar">?</div>
+          <div class="user-meta">
+            <strong id="meLabel">giriş yok</strong>
+            <small id="meHint">oturum aç</small>
+          </div>
+          <button class="logout-link" id="logoutBtn" type="button" title="Çıkış">çıkış</button>
         </div>
       </div>
-      <div class="side-block" style="flex:1; overflow:auto">
-        <h3>Online</h3>
-        <div class="list" id="online"></div>
+
+      <div class="side-scroll">
+        <section class="nav-section tone-rooms">
+          <div class="nav-head">
+            <h3>Odalar</h3>
+            <button class="icon-btn" id="toggleRoomCreate" type="button" title="Yeni oda">+</button>
+          </div>
+          <div class="create-panel hidden" id="roomCreate">
+            <label>Yeni oda adı</label>
+            <div class="actions">
+              <input id="newRoom" placeholder="ör. proje" maxlength="32" />
+            </div>
+            <label class="ttl-label">Süre</label>
+            <select id="roomTTL">
+              <option value="">Kalıcı</option>
+              <option value="2h">Süreli · 2 saat</option>
+              <option value="midnight">Süreli · gece yarısı</option>
+              <option value="24h">Süreli · 24 saat</option>
+            </select>
+            <label class="ttl-label">Tür</label>
+            <select id="roomKind">
+              <option value="room">Normal oda</option>
+              <option value="timed">Toplantı (süreli)</option>
+              <option value="event">Etkinlik (süreli)</option>
+            </select>
+            <div class="actions">
+              <button class="btn-sm primary" id="addRoom" type="button">Ekle</button>
+              <button class="btn-sm ghost" id="cancelRoomCreate" type="button">İptal</button>
+            </div>
+          </div>
+          <div class="nav-list" id="rooms"></div>
+        </section>
+
+        <section class="nav-section tone-dms">
+          <div class="nav-head"><h3>Özel mesajlar</h3></div>
+          <div class="nav-list" id="dms"></div>
+        </section>
+
+        <section class="nav-section tone-people">
+          <div class="nav-head"><h3>Kişiler</h3></div>
+          <input class="people-search" id="peopleSearch" type="search" placeholder="kişi ara…" autocomplete="off" />
+          <div class="nav-list" id="people"></div>
+        </section>
+        <section class="nav-section tone-tools">
+          <div class="nav-head"><h3>Araçlar</h3></div>
+          <div class="tool-row">
+            <input class="people-search" id="globalSearch" type="search" placeholder="Tüm odalarda ara…" />
+          </div>
+          <div class="nav-list search-hits" id="searchHits"></div>
+          <div class="tool-row focus-row">
+            <label>Odak</label>
+            <select id="myFocus">
+              <option value="here">bu odada</option>
+              <option value="busy">meşgul</option>
+              <option value="away">uzakta</option>
+            </select>
+          </div>
+          <div class="tool-row">
+            <button class="btn-sm ghost" id="themeToggle" type="button">Tema: koyu</button>
+            <button class="btn-sm ghost" id="inviteBtn" type="button">Davet linki</button>
+          </div>
+        </section>
       </div>
     </aside>
 
     <section class="main">
-      <header>
-        <strong id="roomTitle">Join a room</strong>
-        <div id="status">disconnected</div>
-      </header>
-
-      <div class="join" id="join">
-        <div class="join-card">
-          <p>Real-time chat powered by Go, Rust, and Redis.</p>
-          <input id="user" placeholder="username" maxlength="32" />
-          <input id="room" placeholder="room" value="general" maxlength="32" />
-          <button class="primary" id="connectBtn" type="button">Connect</button>
+      <div class="auth" id="auth">
+        <div class="auth-stage">
+          <div class="auth-glow" aria-hidden="true"></div>
+          <div class="auth-card anim-rise">
+            <div class="auth-brand">
+              <div class="auth-mark">M</div>
+              <div>
+                <h1>Metis</h1>
+                <p class="auth-tag">gerçek zamanlı sohbet · go · rust · redis</p>
+              </div>
+            </div>
+            <div class="tabs">
+              <button class="ghost active-tab" id="tabLogin" type="button">Giriş</button>
+              <button class="ghost" id="tabRegister" type="button">Kayıt</button>
+            </div>
+            <label class="field">
+              <span>Kullanıcı adı</span>
+              <input id="username" placeholder="ör. alice" maxlength="24" autocomplete="username" />
+            </label>
+            <label class="field">
+              <span>Şifre</span>
+              <input id="password" type="password" placeholder="••••••••" maxlength="72" autocomplete="current-password" />
+            </label>
+            <button class="primary auth-submit" id="authBtn" type="button">Giriş yap</button>
+            <div class="err" id="authErr"></div>
+            <p class="hint">Demo: <button type="button" class="demo-chip" data-u="alice">alice</button> / demo123</p>
+          </div>
         </div>
       </div>
 
-      <div class="chat hidden" id="chat">
-        <div id="messages"></div>
-        <div id="typing"></div>
-        <form class="composer" id="form">
-          <input id="text" placeholder="Write a message…" autocomplete="off" maxlength="1000" />
-          <button class="primary" type="submit">Send</button>
-        </form>
+      <div class="workspace hidden" id="workspace">
+        <div class="panels" id="panels">
+          <section class="panel" id="panelMain" data-slot="main"></section>
+          <section class="panel panel-side hidden" id="panelSide" data-slot="side"></section>
+        </div>
       </div>
     </section>
   </div>
 
+  <div class="popover hidden" id="emojiPop"></div>
+  <div class="popover gif-pop hidden" id="gifPop"></div>
+
+  <div class="modal-backdrop hidden" id="profileModal">
+    <div class="profile-card anim-rise" role="dialog" aria-modal="true">
+      <button class="profile-close" id="profileClose" type="button" aria-label="Kapat">✕</button>
+      <div class="profile-head">
+        <div class="profile-avatar" id="profileAvatar">?</div>
+        <div>
+          <h2 id="profileName">user</h2>
+          <p class="profile-sub" id="profileSub">profil</p>
+        </div>
+      </div>
+      <div class="profile-actions" id="profileTopActions">
+        <button class="primary" id="profileDm" type="button">Mesaj yaz</button>
+        <button class="ghost" id="profileMute" type="button">Bildirimleri sessize al</button>
+        <button class="ghost danger-outline" id="profileBlock" type="button">Engelle</button>
+      </div>
+      <div class="profile-tabs" id="profileTabs">
+        <button type="button" class="tab-btn active" data-tab="media">Medya</button>
+        <button type="button" class="tab-btn" data-tab="links">Bağlantılar</button>
+        <button type="button" class="tab-btn hidden" data-tab="settings" id="tabSettingsBtn">Ayarlar</button>
+      </div>
+      <div class="profile-tab-panel" id="tabMedia">
+        <div class="media-grid" id="profileMedia"></div>
+      </div>
+      <div class="profile-tab-panel hidden" id="tabLinks">
+        <div class="links-list" id="profileLinks"></div>
+      </div>
+      <div class="profile-tab-panel hidden" id="tabSettings">
+        <div class="settings-list">
+          <label class="settings-row">
+            <span>Tema</span>
+            <select id="settingsTheme">
+              <option value="dark">Koyu</option>
+              <option value="light">Açık</option>
+            </select>
+          </label>
+          <label class="settings-row">
+            <span>Odak durumu</span>
+            <select id="settingsFocus">
+              <option value="here">Bu odada</option>
+              <option value="busy">Meşgul</option>
+              <option value="away">Uzakta</option>
+            </select>
+          </label>
+          <label class="settings-row check">
+            <span>Sesli bildirim</span>
+            <input type="checkbox" id="settingsSound" />
+          </label>
+          <button type="button" class="ghost full" id="settingsNotify">Masaüstü bildirimi iste</button>
+          <button type="button" class="ghost full danger-outline" id="settingsLogout">Çıkış yap</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <template id="panelTpl">
+    <header class="chat-header">
+      <div class="header-left">
+        <button type="button" class="room-title title-btn" title="Sohbet bilgisi">Sohbet</button>
+        <span class="conn-status">bağlı değil</span>
+      </div>
+      <div class="header-right">
+        <div class="online-pills"></div>
+        <div class="header-search">
+          <button class="tool-btn search-toggle" type="button" title="Ara" aria-label="Ara" aria-expanded="false">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2"/>
+              <path d="M16.5 16.5 20 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <input class="msg-search hidden" type="search" placeholder="Bu sohbette ara…" />
+        </div>
+        <button class="tool-btn call-btn" type="button" title="Sesli ara">📞</button>
+        <button class="tool-btn mute-btn" type="button" title="Ses">🔔</button>
+        <button class="tool-btn close-side hidden" type="button" title="Paneli kapat">✕</button>
+      </div>
+    </header>
+    <div class="pin-bar hidden"></div>
+    <div class="messages"></div>
+    <div class="typing"></div>
+    <div class="reply-bar hidden">
+      <div class="reply-preview"></div>
+      <button type="button" class="reply-clear" title="Alıntıyı kaldır">✕</button>
+    </div>
+    <div class="rate-hint hidden"></div>
+    <form class="composer">
+      <input type="file" class="file-input hidden" accept="image/*,.png,.jpg,.jpeg,.gif,.webp,.pdf,.txt,.zip" multiple />
+      <div class="tools-wrap">
+        <button class="tool tools-toggle" type="button" title="Araçlar" aria-label="Araçlar" aria-expanded="false">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <div class="tools-bubble hidden" role="menu">
+          <button type="button" data-act="emoji" role="menuitem"><span>😀</span> Emoji</button>
+          <button type="button" data-act="sticker" role="menuitem"><span>✨</span> Sticker</button>
+          <button type="button" data-act="gif" role="menuitem"><span>GIF</span> GIF</button>
+          <button type="button" data-act="photo" role="menuitem"><span>🖼️</span> Fotoğraf</button>
+          <div class="tools-ephemeral">
+            <label>Kaybolan mesaj</label>
+            <select class="ephemeral-sel" title="Kaybolan mesaj">
+              <option value="">kalıcı</option>
+              <option value="after_read">okununca sil</option>
+              <option value="24h">24s sonra sil</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <input class="text" placeholder="Mesaj yaz…" autocomplete="off" maxlength="2000" />
+      <button class="send-btn" type="submit" title="Gönder" aria-label="Gönder">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M5 16.5c0-5.2 3.1-9 7-9s7 3.8 7 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M8.8 9.2 12 5.5l3.2 3.7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </form>
+  </template>
+
+  <div class="popover sticker-pop hidden" id="stickerPop"></div>
+  <div class="toast-host" id="toastHost"></div>
+
+  <script src="/app.js"></script>
   <script>
-    const $ = (id) => document.getElementById(id);
-    let ws = null;
-    let me = "";
-    let currentRoom = "";
-    let typingTimer = null;
-    let typingClear = null;
-    const typingUsers = new Set();
-
-    function setStatus(on, text) {
-      $("status").textContent = text;
-      $("status").classList.toggle("on", on);
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
-
-    function renderOnline(list) {
-      const el = $("online");
-      el.innerHTML = "";
-      (list || []).forEach((name) => {
-        const chip = document.createElement("div");
-        chip.className = "chip";
-        chip.textContent = name;
-        el.appendChild(chip);
-      });
-      if (!list || !list.length) {
-        const empty = document.createElement("div");
-        empty.className = "chip";
-        empty.style.opacity = ".6";
-        empty.textContent = "nobody here";
-        empty.style.setProperty("--ok", "#555");
-        el.appendChild(empty);
-      }
-    }
-
-    async function loadRooms(active) {
-      try {
-        const res = await fetch("/api/rooms");
-        const rooms = await res.json();
-        const el = $("rooms");
-        el.innerHTML = "";
-        rooms.sort((a, b) => a.name.localeCompare(b.name));
-        rooms.forEach((r) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.textContent = r.name + (r.online_count ? ` (${r.online_count})` : "");
-          if (r.name === active) btn.classList.add("active");
-          btn.onclick = () => switchRoom(r.name);
-          el.appendChild(btn);
-        });
-      } catch (_) {}
-    }
-
-    function addMsg(m) {
-      if (m.type === "typing") {
-        if (m.user === me) return;
-        typingUsers.add(m.user);
-        updateTyping();
-        clearTimeout(typingClear);
-        typingClear = setTimeout(() => {
-          typingUsers.delete(m.user);
-          updateTyping();
-        }, 1500);
-        return;
-      }
-      if (m.type === "presence") {
-        renderOnline(m.online || []);
-        loadRooms(currentRoom);
-        return;
-      }
-
-      const el = document.createElement("div");
-      el.className = "msg" + (m.type === "system" ? " system" : m.user === me ? " me" : "");
-      if (m.type === "system") {
-        el.textContent = m.content;
-      } else {
-        const meta = document.createElement("div");
-        meta.className = "meta";
-        meta.textContent = `${m.user} · ${new Date(m.ts).toLocaleTimeString()}`;
-        const body = document.createElement("div");
-        body.textContent = m.content;
-        el.append(meta, body);
-      }
-      $("messages").appendChild(el);
-      $("messages").scrollTop = $("messages").scrollHeight;
-    }
-
-    function updateTyping() {
-      const names = [...typingUsers];
-      $("typing").textContent = names.length
-        ? names.join(", ") + (names.length === 1 ? " is typing…" : " are typing…")
-        : "";
-    }
-
-    async function loadHistory(room) {
-      $("messages").innerHTML = "";
-      try {
-        const res = await fetch("/api/rooms/" + encodeURIComponent(room) + "/messages");
-        const list = await res.json();
-        list.forEach(addMsg);
-      } catch (_) {}
-    }
-
-    async function loadPresence(room) {
-      try {
-        const res = await fetch("/api/rooms/" + encodeURIComponent(room) + "/presence");
-        const data = await res.json();
-        renderOnline(data.online || []);
-      } catch (_) {}
-    }
-
-    function connect(room) {
-      if (ws) {
-        ws.onclose = null;
-        ws.close();
-      }
-      currentRoom = room;
-      const proto = location.protocol === "https:" ? "wss" : "ws";
-      ws = new WebSocket(`${proto}://${location.host}/ws?user=${encodeURIComponent(me)}&room=${encodeURIComponent(room)}`);
-
-      ws.onopen = async () => {
-        setStatus(true, `${me} @ ${room}`);
-        $("roomTitle").textContent = "#" + room;
-        $("join").classList.add("hidden");
-        $("chat").classList.remove("hidden");
-        await loadHistory(room);
-        await loadPresence(room);
-        await loadRooms(room);
-        $("text").focus();
-      };
-      ws.onmessage = (ev) => {
-        try { addMsg(JSON.parse(ev.data)); } catch (_) {}
-      };
-      ws.onclose = () => setStatus(false, "disconnected");
-    }
-
-    async function switchRoom(room) {
-      if (!me || room === currentRoom) return;
-      await fetch("/api/rooms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: room }),
-      });
-      typingUsers.clear();
-      updateTyping();
-      connect(room);
-    }
-
-    $("connectBtn").onclick = async () => {
-      me = $("user").value.trim();
-      const room = ($("room").value.trim().toLowerCase() || "general");
-      if (!me) { $("user").focus(); return; }
-      await fetch("/api/rooms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: room }),
-      });
-      connect(room);
-    };
-
-    $("addRoom").onclick = async () => {
-      const name = $("newRoom").value.trim().toLowerCase();
-      if (!name) return;
-      await fetch("/api/rooms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      $("newRoom").value = "";
-      if (me) switchRoom(name);
-      else {
-        $("room").value = name;
-        await loadRooms(name);
-      }
-    };
-
-    $("form").onsubmit = (e) => {
-      e.preventDefault();
-      const content = $("text").value.trim();
-      if (!content || !ws || ws.readyState !== 1) return;
-      ws.send(JSON.stringify({ content, type: "chat" }));
-      $("text").value = "";
-    };
-
-    $("text").addEventListener("input", () => {
-      if (!ws || ws.readyState !== 1) return;
-      if (typingTimer) return;
-      ws.send(JSON.stringify({ type: "typing" }));
-      typingTimer = setTimeout(() => { typingTimer = null; }, 1200);
-    });
-
-    loadRooms("general");
   </script>
 </body>
 </html>

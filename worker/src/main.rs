@@ -60,12 +60,25 @@ fn handle_entry(redis: &mut Redis, entry: &StreamEntry, rate_limit: i64) -> Resu
     let user = entry.fields.get("user").cloned().unwrap_or_default();
     let room = entry.fields.get("room").cloned().unwrap_or_default();
     let content = entry.fields.get("content").cloned().unwrap_or_default();
+    let meta = entry.fields.get("meta").cloned().unwrap_or_default();
     let msg_type = entry
         .fields
         .get("type")
         .cloned()
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| "chat".into());
+    let ephemeral = entry
+        .fields
+        .get("ephemeral")
+        .cloned()
+        .unwrap_or_default();
+    let reply_to = entry.fields.get("reply_to").cloned().unwrap_or_default();
+    let reply_content = entry
+        .fields
+        .get("reply_content")
+        .cloned()
+        .unwrap_or_default();
+    let reply_user = entry.fields.get("reply_user").cloned().unwrap_or_default();
     let ts = entry
         .fields
         .get("ts")
@@ -77,39 +90,95 @@ fn handle_entry(redis: &mut Redis, entry: &StreamEntry, rate_limit: i64) -> Resu
     }
 
     if !redis.allow_rate(&user, rate_limit)? {
-        let payload = json_msg(
-            &new_id(),
-            "system",
-            &room,
-            &format!("{user} hit the rate limit — slow down"),
-            "system",
-            now_ms(),
+        let key = format!("ratelimit:{user}");
+        let mut retry = redis.ttl(&key)?.max(1);
+        if retry < 1 {
+            retry = 1;
+        }
+        let payload = format!(
+            "{{\"id\":\"{}\",\"user\":\"{}\",\"room\":\"{}\",\"content\":\"\",\"type\":\"rate_limit\",\"retry_after\":{},\"ts\":{}}}",
+            escape(&new_id()),
+            escape(&user),
+            escape(&room),
+            retry,
+            now_ms()
         );
         redis.publish(&format!("chat:room:{room}"), &payload)?;
+        redis.publish(&format!("chat:user:{user}"), &payload)?;
         return Ok(());
     }
 
     let id = new_id();
-    let payload = json_msg(&id, &user, &room, &content, &msg_type, ts);
+    let expire_at = if ephemeral == "24h" {
+        now_ms() + 24 * 3600 * 1000
+    } else {
+        0
+    };
+    let payload = json_msg_full(
+        &id,
+        &user,
+        &room,
+        &content,
+        &msg_type,
+        ts,
+        &meta,
+        &ephemeral,
+        expire_at,
+        &reply_to,
+        &reply_content,
+        &reply_user,
+    );
     let history_key = format!("history:{room}");
     redis.lpush(&history_key, &payload)?;
     redis.ltrim(&history_key, 0, 99)?;
     redis.sadd("chat:rooms", &room)?;
     redis.publish(&format!("chat:room:{room}"), &payload)?;
-    println!("fan-out room={room} user={user}");
+    println!("fan-out room={room} user={user} type={msg_type}");
     Ok(())
 }
 
-fn json_msg(id: &str, user: &str, room: &str, content: &str, msg_type: &str, ts: i64) -> String {
-    format!(
-        "{{\"id\":\"{}\",\"user\":\"{}\",\"room\":\"{}\",\"content\":\"{}\",\"type\":\"{}\",\"ts\":{}}}",
+fn json_msg_full(
+    id: &str,
+    user: &str,
+    room: &str,
+    content: &str,
+    msg_type: &str,
+    ts: i64,
+    meta: &str,
+    ephemeral: &str,
+    expire_at: i64,
+    reply_to: &str,
+    reply_content: &str,
+    reply_user: &str,
+) -> String {
+    let mut s = format!(
+        "{{\"id\":\"{}\",\"user\":\"{}\",\"room\":\"{}\",\"content\":\"{}\",\"type\":\"{}\",\"ts\":{}",
         escape(id),
         escape(user),
         escape(room),
         escape(content),
         escape(msg_type),
         ts
-    )
+    );
+    if !meta.is_empty() {
+        s.push_str(&format!(",\"meta\":\"{}\"", escape(meta)));
+    }
+    if !ephemeral.is_empty() {
+        s.push_str(&format!(",\"ephemeral\":\"{}\"", escape(ephemeral)));
+    }
+    if expire_at > 0 {
+        s.push_str(&format!(",\"expire_at\":{expire_at}"));
+    }
+    if !reply_to.is_empty() {
+        s.push_str(&format!(
+            ",\"reply_to\":\"{}\",\"reply_content\":\"{}\",\"reply_user\":\"{}\"",
+            escape(reply_to),
+            escape(reply_content),
+            escape(reply_user)
+        ));
+    }
+    s.push('}');
+    s
 }
 
 fn escape(s: &str) -> String {
@@ -164,7 +233,6 @@ impl Redis {
     }
 
     fn xread_group(&mut self, count: i64, block_ms: i64) -> Result<Vec<StreamEntry>, String> {
-        // Temporarily allow longer block
         self.stream
             .set_read_timeout(Some(std::time::Duration::from_millis(
                 (block_ms as u64) + 1000,
@@ -239,6 +307,13 @@ impl Redis {
         Ok(count <= limit)
     }
 
+    fn ttl(&mut self, key: &str) -> Result<i64, String> {
+        match self.cmd(&["TTL", key])? {
+            Resp::Int(n) => Ok(n),
+            other => Err(format!("unexpected TTL reply: {other:?}")),
+        }
+    }
+
     fn cmd(&mut self, args: &[&str]) -> Result<Resp, String> {
         let mut out = format!("*{}\r\n", args.len());
         for a in args {
@@ -266,7 +341,7 @@ impl Redis {
                     return Ok(Resp::Null);
                 }
                 let data = self.read_exact(n as usize)?;
-                let _ = self.read_line()?; // trailing CRLF
+                let _ = self.read_line()?;
                 Ok(Resp::Bulk(String::from_utf8_lossy(&data).into_owned()))
             }
             "*" => {
@@ -328,7 +403,6 @@ fn parse_xread(streams: Vec<Resp>) -> Result<Vec<StreamEntry>, String> {
         let Resp::Array(parts) = stream else {
             continue;
         };
-        // [name, [[id, [k,v,...]], ...]]
         if parts.len() < 2 {
             continue;
         }
