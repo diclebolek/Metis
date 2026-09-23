@@ -1,0 +1,20 @@
+# Go
+gateway/bin/
+gateway/gateway.exe
+gateway/gateway
+*.exe
+
+# Rust
+worker/target/
+**/*.rs.bk
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+*.log
